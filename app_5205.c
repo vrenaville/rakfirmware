@@ -269,53 +269,30 @@ void app_loop(void)
     if (ret_code != RUI_STATUS_OK)
         RUI_LOG_PRINTF("I2C init error! %d\r\n", ret_code);
 
-    i2c_data[2] = 0x09; // Set hours. More information can be found in the DS3231 datasheet.
-    i2c_data[1] = 0x05; // Set minutes
-    i2c_data[0] = 0x00; // Set seconds
-
+    i2c_data[0] = 0x06; // Set seconds
+    data_len = 2 
     // Note: The device address here needs to be an 8-bit address.
-    ret_code = rui_i2c_rw(&user_i2c, RUI_IF_WRITE, DA3231_ADDR_WRITE, 0x00, i2c_data, 3);
+    ret_code = rui_i2c_rw(&user_i2c, RUI_IF_WRITE, MOST_ADDR_WRITE, 0x06, i2c_data, 0);
     if (ret_code != RUI_STATUS_OK)
         RUI_LOG_PRINTF("I2C write error! %d\r\n", ret_code);
     else
     {
         RUI_LOG_PRINTF("I2C write success.\r\n");
-        RUI_LOG_PRINTF("Set the time to %02X:%02X:%02X.\r\n", i2c_data[2], i2c_data[1], i2c_data[0]);
     }
-#endif
-   void writeI2CRegister8bit(int addr, int value) {
-  Wire.beginTransmission(addr);
-  Wire.write(value);
-  Wire.endTransmission();
-}
+    RUI_RETURN_STATUS ret_code;
 
-unsigned int readI2CRegister16bit(int addr, int reg) {
-  Wire.beginTransmission(addr);
-  Wire.write(reg);
-  Wire.endTransmission();
-  delay(20);
-  Wire.requestFrom(addr, 2);
-  unsigned int t = Wire.read() << 8;
-  t = t | Wire.read();
-  return t;
-}
+    if (timeout_flag)
+    {
+        // Note: The device address here needs to be an 8-bit address.
+        ret_code = rui_i2c_rw(&user_i2c, RUI_IF_READ, MOST_ADDR_READ, 0x05, i2c_data, data_len);
+        if (ret_code != RUI_STATUS_OK)
+            RUI_LOG_PRINTF("I2C read error! %d\r\n", ret_code);
+        else
+            RUI_LOG_PRINTF("Time is %02X:%02X:.\r\n", i2c_data[1], i2c_data[0]);
 
-void setup() {
-  Wire.begin();
-  Serial.begin(9600);
-  writeI2CRegister8bit(0x20, 6); //reset
-}
-
-void loop() {
-  Serial.print(readI2CRegister16bit(0x20, 0)); //read capacitance register
-  Serial.print(", ");
-  Serial.print(readI2CRegister16bit(0x20, 5)); //temperature register
-  Serial.print(", ");
-  writeI2CRegister8bit(0x20, 3); //request light measurement
-  Serial.println(readI2CRegister16bit(0x20, 4)); //read light register
-}
-
-/**************/
+        timeout_flag = false;
+    }
+    /**************/
     rui_lora_get_status(false,&app_lora_status);
     if(app_lora_status.IsJoined)  //if LoRaWAN is joined
     {
